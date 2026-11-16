@@ -13,7 +13,8 @@ import (
 // It returns an error if dir cannot be resolved.
 // It does not read the process environment, but a relative dir resolves against the working directory.
 // Only the given prefixes are removed, so other credentials such as NPM_TOKEN pass through. Callers must opt in by calling it.
-func SanitizeEnv(env []string, prefixes []string, dir string) ([]string, error) {
+// Callers holding a slice of prefixes pass it as prefixes...
+func SanitizeEnv(env []string, dir string, prefixes ...string) ([]string, error) {
 	lowerPrefixes := make([]string, 0, len(prefixes))
 	for _, prefix := range prefixes {
 		if prefix != "" {

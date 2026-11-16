@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func sanitize(t *testing.T, env []string, prefixes []string, dir string) []string {
+func sanitize(t *testing.T, env []string, dir string, prefixes ...string) []string {
 	t.Helper()
-	got, err := SanitizeEnv(env, prefixes, dir)
+	got, err := SanitizeEnv(env, dir, prefixes...)
 	require.NoError(t, err)
 	return got
 }
@@ -101,9 +101,18 @@ func TestSanitizeEnv_FiltersEntriesByPrefix(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.wantEnv, sanitize(t, tt.env, tt.prefixes, ""))
+			assert.Equal(t, tt.wantEnv, sanitize(t, tt.env, "", tt.prefixes...))
 		})
 	}
+}
+
+func TestSanitizeEnv_WithoutPrefixArgumentRemovesNothing(t *testing.T) {
+	env := []string{"SNYK_TOKEN=a", "NPM_TOKEN=b", "PATH=/bin"}
+
+	got, err := SanitizeEnv(env, "")
+
+	require.NoError(t, err)
+	assert.Equal(t, env, got)
 }
 
 func TestSanitizeEnv_SetsPWDToAbsoluteDir(t *testing.T) {
@@ -161,7 +170,7 @@ func TestSanitizeEnv_SetsPWDToAbsoluteDir(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.wantEnv, sanitize(t, tt.env, []string{"snyk_"}, tt.dir))
+			assert.Equal(t, tt.wantEnv, sanitize(t, tt.env, tt.dir, "snyk_"))
 		})
 	}
 }
@@ -171,7 +180,7 @@ func TestSanitizeEnv_DoesNotSetPWDOnWindowsOrPlan9(t *testing.T) {
 		t.Skip("covers the platforms where the PWD tests above are skipped")
 	}
 
-	got := sanitize(t, []string{"PATH=/bin", "PWD=/stale", "SNYK_TOKEN=secret"}, []string{"snyk_"}, t.TempDir())
+	got := sanitize(t, []string{"PATH=/bin", "PWD=/stale", "SNYK_TOKEN=secret"}, t.TempDir(), "snyk_")
 
 	assert.Equal(t, []string{"PATH=/bin", "PWD=/stale"}, got)
 }
@@ -188,7 +197,7 @@ func TestSanitizeEnv_ReturnsErrorWhenDirCannotBeResolved(t *testing.T) {
 		t.Skip("platform resolves the working directory of a removed directory")
 	}
 
-	got, err := SanitizeEnv([]string{"SNYK_TOKEN=secret", "PATH=/bin"}, []string{"snyk_"}, "sub")
+	got, err := SanitizeEnv([]string{"SNYK_TOKEN=secret", "PATH=/bin"}, "sub", "snyk_")
 
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "resolve working directory")
@@ -199,7 +208,7 @@ func TestSanitizeEnv_DoesNotModifyCallerSlice(t *testing.T) {
 	env := []string{"SNYK_TOKEN=secret", "PATH=/bin", "PWD=/stale"}
 	before := append([]string(nil), env...)
 
-	sanitize(t, env, []string{"snyk_"}, t.TempDir())
+	sanitize(t, env, t.TempDir(), "snyk_")
 
 	assert.Equal(t, before, env)
 }
@@ -213,7 +222,7 @@ func TestSanitizeEnv_ChildProcessDoesNotReceivePrefixedVars(t *testing.T) {
 
 	cmd := exec.Command("sh", "-c", "env")
 	cmd.Dir = t.TempDir()
-	env, err := SanitizeEnv(os.Environ(), []string{"acme_"}, cmd.Dir)
+	env, err := SanitizeEnv(os.Environ(), cmd.Dir, "acme_")
 	require.NoError(t, err)
 	cmd.Env = env
 
