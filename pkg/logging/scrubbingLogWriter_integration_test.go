@@ -107,6 +107,18 @@ func TestScrubbingWriter_NonSecretFieldsKeepTheirValues(t *testing.T) {
 			event:     `{"level":"debug","args":"snyk test -u","command":"monitor","message":"dispatching"}`,
 			preserved: map[string]any{"args": "snyk test -u", "command": "monitor"},
 		},
+		{
+			name:      "hyphenated word containing a redaction term",
+			terms:     redactionTerms,
+			event:     `{"level":"debug","message":"> Content-Type: application/json"}`,
+			preserved: map[string]any{"message": "> Content-Type: application/json"},
+		},
+		{
+			name:      "command line flag containing a redaction term",
+			terms:     redactionTerms,
+			event:     `{"level":"debug","message":"args: --target-reference=main"}`,
+			preserved: map[string]any{"message": "args: --target-reference=main"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
