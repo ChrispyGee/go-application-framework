@@ -1,5 +1,4 @@
-// Package env_utils provides helpers for preparing child-process environments.
-package env_utils
+package envvars
 
 import (
 	"fmt"
@@ -8,15 +7,22 @@ import (
 	"strings"
 )
 
-const snykPrefix = "SNYK_"
-
-// SanitizeEnv returns a copy of env without SNYK_ variables, ignoring case. A nil env gives an empty result.
+// SanitizeEnv returns a copy of env without variables whose names start with any of prefixes, ignoring case.
+// Empty prefixes are skipped, and with no prefixes nothing is removed. A nil env gives an empty result.
 // Unless dir is empty or the platform is windows or plan9, PWD is set to the absolute path of dir.
 // It returns an error if dir cannot be resolved.
 // It does not read the process environment, but a relative dir resolves against the working directory.
-// It only removes the SNYK_ prefix, so other credentials such as NPM_TOKEN pass through. Callers must opt in by calling it.
-func SanitizeEnv(env []string, dir string) ([]string, error) {
-	result := withoutEntries(env, isSnykEntry)
+// Only the given prefixes are removed, so other credentials such as NPM_TOKEN pass through. Callers must opt in by calling it.
+func SanitizeEnv(env []string, prefixes []string, dir string) ([]string, error) {
+	lowerPrefixes := make([]string, 0, len(prefixes))
+	for _, prefix := range prefixes {
+		if prefix != "" {
+			lowerPrefixes = append(lowerPrefixes, strings.ToLower(prefix))
+		}
+	}
+	result := withoutEntries(env, func(entry string) bool {
+		return hasAnyPrefix(entry, lowerPrefixes)
+	})
 	if dir == "" || runtime.GOOS == "windows" || runtime.GOOS == "plan9" {
 		return result, nil
 	}
@@ -39,9 +45,14 @@ func withoutEntries(env []string, drop func(string) bool) []string {
 }
 
 // A leading '=' is trimmed first, so "=SNYK_X=v" matches and Windows drive entries like "=C:=C:\dir" do not.
-func isSnykEntry(entry string) bool {
-	name := strings.TrimPrefix(entry, "=")
-	return len(name) >= len(snykPrefix) && strings.EqualFold(name[:len(snykPrefix)], snykPrefix)
+func hasAnyPrefix(entry string, lowerPrefixes []string) bool {
+	name := strings.ToLower(strings.TrimPrefix(entry, "="))
+	for _, prefix := range lowerPrefixes {
+		if strings.HasPrefix(name, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func isPWDEntry(entry string) bool {
