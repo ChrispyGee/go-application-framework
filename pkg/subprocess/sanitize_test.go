@@ -204,7 +204,7 @@ func TestSanitizeEnv_ReturnsErrorWhenDirCannotBeResolved(t *testing.T) {
 	require.Error(t, err)
 	var snykErr snyk_errors.Error
 	require.ErrorAs(t, err, &snykErr)
-	assert.Equal(t, "SNYK-CLI-0000", snykErr.ErrorCode)
+	assert.Equal(t, "SNYK-CLI-0039", snykErr.ErrorCode)
 	assert.Contains(t, snykErr.Detail, "resolve working directory")
 	assert.ErrorIs(t, err, fs.ErrNotExist)
 	assert.Nil(t, got)
