@@ -13,7 +13,7 @@ import (
 // SanitizeEnv returns a copy of env without variables whose names start with any of prefixes, ignoring case.
 // Empty prefixes are skipped, and with no prefixes nothing is removed. A nil env gives an empty result.
 // Unless dir is empty or the platform is windows or plan9, PWD is set to the absolute path of dir.
-// It returns a SNYK-CLI-0039 (SubprocessFailed) error if dir cannot be resolved.
+// It returns a SNYK-CLI-0039 (ExternalProgramFailed) error if dir cannot be resolved.
 // It does not read the process environment, but a relative dir resolves against the working directory.
 // Only the given prefixes are removed, so other credentials such as NPM_TOKEN pass through. Callers must opt in by calling it.
 // Callers holding a slice of prefixes pass it as prefixes...
@@ -32,7 +32,7 @@ func SanitizeEnv(env []string, dir string, prefixes ...string) ([]string, error)
 	}
 	pwd, err := filepath.Abs(dir)
 	if err != nil {
-		return nil, cli.NewSubprocessFailedError(fmt.Sprintf("resolve working directory for %q", dir), snyk_errors.WithCause(err))
+		return nil, cli.NewExternalProgramFailedError(fmt.Sprintf("resolve working directory for %q", dir), snyk_errors.WithCause(err))
 	}
 	return append(withoutEntries(result, isPWDEntry), "PWD="+pwd), nil
 }
